@@ -9,7 +9,6 @@ type Mode = "camera" | "scanning" | "result";
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("camera");
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [ocrText, setOcrText] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -17,17 +16,22 @@ export default function Home() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Initialize camera
   const startCamera = useCallback(async () => {
+    if (streamRef.current) return;
+    
     try {
       const constraints = {
         video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       };
+      
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(newStream);
+      streamRef.current = newStream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
@@ -39,11 +43,14 @@ export default function Home() {
   }, []);
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
-  }, [stream]);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (mode === "camera") {
@@ -51,7 +58,10 @@ export default function Home() {
     } else {
       stopCamera();
     }
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      window.speechSynthesis.cancel();
+    };
   }, [mode, startCamera, stopCamera]);
 
   // Handle Capture & OCR
@@ -60,13 +70,16 @@ export default function Home() {
 
     const canvas = canvasRef.current;
     const video = videoRef.current;
+    
+    // Use slightly lower resolution for OCR to save memory if needed, 
+    // but newspaper text is small so we keep it decent.
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = canvas.toDataURL("image/jpeg");
+    const imageData = canvas.toDataURL("image/jpeg", 0.8); // Compress slightly
 
     setMode("scanning");
     setIsProcessing(true);
