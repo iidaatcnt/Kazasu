@@ -1,0 +1,21 @@
+{
+  "name": "かざす - 音声ルーペ",
+  "short_name": "かざす",
+  "description": "新聞を声で楽しむ音声ルーペ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdfdfd",
+  "theme_color": "#5c62d6",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
